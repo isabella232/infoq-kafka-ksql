@@ -396,16 +396,32 @@ Finally, we're going to stream the enriched ratings data to our data lake. From 
   "s3.bucket.name": "rmoff-demo-ratings",
 ----
 
-TODO: Set up S3 (copy from blog)
-
 With the data streaming to S3 we can see it in the bucket: 
 
 image::images/s3_bucket_ratings.png[]
 
-and now use it for ad-hoc analysis through numerous tools, including Amazon's own QuickSight:
+and now use it for ad-hoc analysis through numerous tools, including Amazon's own Athena: 
+
+TODO! 
+CREATE EXTERNAL TABLE ratings (
+  RATING_ID INT
+  CHANNEL STRING
+  STARS INT
+  MESSAGE STRING
+  ID INT
+  CLUB_STATUS STRING
+  EMAIL STRING
+  FIRST_NAME STRING
+  LAST_NAME STRING
+ )
+ ROW FORMAT SERDE 'org.openx.data.jsonserde.JsonSerDe'
+ WITH SERDEPROPERTIES ('ignore.malformed.json' = 'true')
+ LOCATION 's3://rmoff-demo-ratings/topics/ratings-with-customer-data/partition=0/';
 
 
-TODO:  show data in a bucket, put athena query on top of it?
+and QuickSight:
+
+TODO! QUICKSIGHT
 
 == Into the future with KSQL and the Streaming Platform
 
