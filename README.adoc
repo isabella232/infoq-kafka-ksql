@@ -1,3 +1,11 @@
+= InfoQ - Apache Kafka and KQL article - code samples
+Robin Moffatt <robin@confluent.io>
+v0.10, 20 Jul 2018
+
+== Overview
+
+These are the code samples and snippets that were used in writing infoq_ksql_part2.adoc[this InfoQ article]. 
+
 == Startup 
 
 Run the stack: 
