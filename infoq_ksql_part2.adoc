@@ -208,23 +208,7 @@ FROM RATINGS R \
 WHERE C.FIRST_NAME IS NOT NULL ;
 ----
 
-We can see the streams created as a result of this:
-
-[source,sql]
-----
-ksql> SHOW STREAMS;
-
- Stream Name          | Kafka Topic                | Format
-------------------------------------------------------------
- RATINGS_ENRICHED     | ratings-with-customer-data | AVRO
- CUSTOMERS_SRC_REKEY  | CUSTOMERS_SRC_REKEY        | AVRO
- RATINGS              | ratings                    | AVRO
- CUSTOMERS_SRC        | asgard.demo.customers      | AVRO
-------------------------------------------------------------
-ksql>
-----
-
-We can also inspect the number of messages processed by each stream:
+We can inspect the number of messages processed by this query:
 
 [source,sql]
 ----
@@ -308,14 +292,18 @@ kafka-console-consumer \
 }
 ----
 
-Before leaving KSQL, let's remind ourselves that we're just, in effect, written two streaming applications: 
+Before leaving KSQL, let's remind ourselves that we've just, in effect, written three streaming applications: 
 
 [source,sql]
 ----
+ksql> SHOW QUERIES;
 
-SHOW QUERIES;
+ Query ID                          | Kafka Topic                | Query String
+------------------------------------------------------------------------------------------------------------
+ CSAS_CUSTOMERS_SRC_REKEY_0        | CUSTOMERS_SRC_REKEY        | CREATE STREAM CUSTOMERS_SRC_REKEY  […]
+ CSAS_RATINGS_ENRICHED_1           | RATINGS_ENRICHED           | CREATE STREAM RATINGS_ENRICHED  […]
+ CSAS_UNHAPPY_PLATINUM_CUSTOMERS_2 | UNHAPPY_PLATINUM_CUSTOMERS | CREATE STREAM UNHAPPY_PLATINUM_CUSTOMERS  […]
 ----
-
 
 === Push notifications driven from Kafka topics
 

@@ -14,7 +14,6 @@ echo -e "\n--\n\nWaiting for Kafka Connect to start on $CONNECT_HOST … ⏳"
 grep -q "Kafka Connect started" <(docker-compose logs -f $CONNECT_HOST)
 
 docker-compose exec kafka-connect-cp bash -c '/scripts/create-es-sink.sh'
-docker-compose exec kafka-connect-cp bash -c '/scripts/create-s3-sink.sh'
 
 
 curl -XPOST "http://localhost:9200/ratings-with-customer-data/type.name=kafkaconnect" -H 'Content-Type: application/json' -d'{

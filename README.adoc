@@ -40,7 +40,6 @@ Should show:
 ----
 es_sink_ratings-with-customer-data  |  RUNNING  |  RUNNING
 es_sink_unhappy_platinum_customers  |  RUNNING  |  RUNNING
-s3-sink-ratings                     |  RUNNING  |  FAILED
 ----
 
 Note that the AWS S3 sink requires further setup, so will initially be in the `FAILED` state. 
@@ -140,19 +139,10 @@ aws_secret_access_key=yyyyyyyyyyyyyy
 
 Create the target bucket to write to and update `scripts/create-s3-sink.sh` accordingly with the region and bucket name. 
 
-Restart the S3 sink: 
+Deploy the connector:
 
 [source,bash]
 ----
-curl -i -X POST -H "Accept:application/json" \
-          -H  "Content-Type:application/json" http://localhost:18083/connectors/s3-sink-ratings/restart
-----
-
-If the `restart` API call doesn't work then simply recreate the connector:
-
-[source,bash]
-----
-curl -s -X DELETE localhost:18083/connectors/s3-sink-ratings
 docker-compose exec kafka-connect-cp bash -c '/scripts/create-s3-sink.sh'
 ----
 
@@ -176,3 +166,45 @@ $ aws s3 ls rmoff-demo-ratings/topics/ratings-with-customer-data/partition=0/
 2018-07-20 13:26:32        587 ratings-with-customer-data+0+0000000006.json
 2018-07-20 13:26:33        592 ratings-with-customer-data+0+0000000009.json
 ----
+
+== Streaming data to Google Cloud Storage (GCS) from Kafka
+
+Install the GCS connector: 
+
+[source,bash]
+----
+docker-compose exec kafka-connect-cp bash -c 'confluent-hub install --no-prompt confluentinc/kafka-connect-gcs:5.0.0'
+docker-compose restart kafka-connect-cp
+----
+
+Download your service account JSON credentials https://console.cloud.google.com/apis/credentials[from GCP] to a file called `gcp_creds.json`.This will be mounted and passed to Kafka Connect on startup. 
+
+Create the target bucket to write to and update `scripts/create-gcs-sink.sh` accordingly with the region and bucket name. 
+
+Deploy the connector:
+
+[source,bash]
+----
+docker-compose exec kafka-connect-cp bash -c '/scripts/create-gcs-sink.sh'
+----
+
+You should see the sink successfully running: 
+
+[source,bash]
+----
+curl -s "http://localhost:18083/connectors"| jq '.[]'| xargs -I{connector_name} curl -s "http://localhost:18083/connectors/"{connector_name}"/status"| jq -c -M '[.name,.connector.state,.tasks[].state]|join(":|:")'| column -s : -t| sed 's/\"//g'| sort
+…
+gcs-sink-ratings                     |  RUNNING  |  RUNNING
+----
+
+In GCS you should see data: 
+
+[source,bash]
+----
+$ aws s3 ls rmoff-demo-ratings/topics/ratings-with-customer-data/partition=0/
+2018-07-20 13:26:29        569 ratings-with-customer-data+0+0000000000.json
+2018-07-20 13:26:31        615 ratings-with-customer-data+0+0000000003.json
+2018-07-20 13:26:32        587 ratings-with-customer-data+0+0000000006.json
+2018-07-20 13:26:33        592 ratings-with-customer-data+0+0000000009.json
+----
+
