@@ -78,7 +78,7 @@ All of these need access to the review information along with details of the use
 
 One option is to store the reviews in a database, against which we then join a user table. Perhaps we drive all the requirements against the data held in this database. There are several challenges to this approach. Since we are coupling together three separate applications to the same schema and access patterns, it becomes more difficult to make changes to one without impacting the others. In addition, one application may start to impact the performance of another—consider a large-scale analytics workload and how this could affect the operational behavior of the customer ops alerting application.
 
-< TODO diagram showing reviews written to database, with application, dashboard and analytics all running against it>
+image::images/all_thru_db.png[]
 
 In general, we would not expect to build the three applications against the same data store. Thus we extract the review and user data to target systems best suited for serving the dependent application. Perhaps a NoSQL store to drive the customer operations application, and something like HDFS/S3, or Snowflake DB for the analytics platform. Now we have the problem of:
 
@@ -103,7 +103,7 @@ At a high level, the design looks like this:
 - Kafka Connect streams the data to Elasticsearch for operational dashboard
 - Kafka Connect streams the data to S3 for long-term ad-hoc analytics and use alongside other datasets
 
-< TODO diagram show above design >
+image::images/design.png[]
 
 The benefits of this include:
 
@@ -145,7 +145,7 @@ The advantage of this is that we isolate the database from our processing. This 
 
 There are https://www.confluent.io/blog/no-more-silos-how-to-integrate-your-databases-with-apache-kafka-and-cdc[multiple CDC techniques and tools], which we will not cover here. Since the data is in MySQL, we use the http://debezium.io/[Debezium] project for CDC. It snapshots the contents of the users table into Kafka, and uses MySQL's binlog to detect and replicate instantly any subsequent changes made to the data in MySQL into Kafka.
 
-< TODO diagram showing database with txn log streaming events into Kafka >
+image::images/cdc.png[]
 
 The messages in the Kafka topic `asgard.demo.CUSTOMERS` streamed from the database look like this:
 
