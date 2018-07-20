@@ -170,7 +170,7 @@ The messages in the Kafka topic `asgard.demo.CUSTOMERS` streamed from the databa
 
 Using KSQL it is simple to join the stream of ratings with our reference information originating from a database and maintained in a Kafka topic.
 
-< TODO: diagram showing join between ratings and user >
+image::images/ksql_join.png[]
 
 The first step is to ensure that the messages in the customer topic are keyed on the join column, which in this case is the customer ID. We can actually do this re-partitioning using KSQL itself. The output of a KSQL `CREATE STREAM` is written to a Kafka topic, named by default after the stream itself
 
@@ -241,7 +241,7 @@ In effect, this SQL statement is itself actually an application just as we would
 
 The output of the `JOIN` that we created above is a Kafka topic, populated in real-time driven by the events from the source `ratings` topic:
 
-< TODO: diagram showing joined data being filtered >
+image::images/ksql_filter.png[]
 
 We can build a second KSQL application which is driven by this derived topic, and in turn apply further processing to the data. Here we will simply filter the stream of all ratings to identify just those which are both:
 
