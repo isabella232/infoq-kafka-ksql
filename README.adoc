@@ -167,6 +167,8 @@ $ aws s3 ls rmoff-demo-ratings/topics/ratings-with-customer-data/partition=0/
 2018-07-20 13:26:33        592 ratings-with-customer-data+0+0000000009.json
 ----
 
+image::images/s3_bucket_ratings.png[]
+
 == Streaming data to Google Cloud Storage (GCS) from Kafka
 
 Install the GCS connector: 
@@ -208,3 +210,42 @@ $ aws s3 ls rmoff-demo-ratings/topics/ratings-with-customer-data/partition=0/
 2018-07-20 13:26:33        592 ratings-with-customer-data+0+0000000009.json
 ----
 
+image::images/gcs_bucket_ratings.png[]
+
+You can also send CSV data to GCS for use in Data Studio - see `scripts/create-gcs-sink-csv.sh`. A neater way is probably to go via BigQuery though, since you don't lose the schema that way. 
+
+image::images/gcp_datastudio.png[]
+
+== Streaming data to Google BigQuery from Kafka
+
+Install the BigQuery connector: 
+
+[source,bash]
+----
+docker-compose exec kafka-connect-cp bash -c 'confluent-hub install --no-prompt wepay/kafka-connect-bigquery:1.1.0'
+docker-compose restart kafka-connect-cp
+----
+
+Download your service account JSON credentials https://console.cloud.google.com/apis/credentials[from GCP] to a file called `gcp_creds.json`.This will be mounted and passed to Kafka Connect on startup. 
+
+Make sure the dataset exists, create it through the Web UI, or CLI (`./google-cloud-sdk/bin/bq mk ksql_demo`).
+
+Update `scripts/create-gbq-sink.sh` with your BQ project name & dataset.
+
+Deploy the connector:
+
+[source,bash]
+----
+docker-compose exec kafka-connect-cp bash -c '/scripts/create-gbq-sink.sh'
+----
+
+You should see the sink successfully running: 
+
+[source,bash]
+----
+curl -s "http://localhost:18083/connectors"| jq '.[]'| xargs -I{connector_name} curl -s "http://localhost:18083/connectors/"{connector_name}"/status"| jq -c -M '[.name,.connector.state,.tasks[].state]|join(":|:")'| column -s : -t| sed 's/\"//g'| sort
+…
+gbq-sink-ratings                     |  RUNNING  |  RUNNING
+----
+
+image::images/gbq01.png[]
