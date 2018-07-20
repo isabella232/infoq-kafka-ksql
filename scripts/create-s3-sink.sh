@@ -3,7 +3,7 @@
 curl -X "POST" "http://kafka-connect-cp:18083/connectors/" \
      -H "Content-Type: application/json" \
     -d '{
-  "name": "s3-sink-orders",
+  "name": "s3-sink-ratings",
   "config": {
     "connector.class": "io.confluent.connect.s3.S3SinkConnector",
     "key.converter":"org.apache.kafka.connect.storage.StringConverter",
