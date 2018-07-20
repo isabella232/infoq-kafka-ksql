@@ -49,9 +49,13 @@ By streaming the transformed data back into Kafka, we get some great benefits. I
 
 Where it builds on this strength even further is that the transformed data can now also be used to drive other applications. Because Kafka persists data, the same data can be used by multiple consumers—and completely independently. Unlike traditional message queues, data is not removed from Kafka once it has been consumed. A second key benefit is that we have a single instance of the transformation code with any associated business logic that it implements. That means a single place in which to maintain it, a standard definition for any measures derived, and consistency in the data across systems. Contrast this to multiple systems each performing the same transformation logic. For the best will in the world, the code _will_ diverge, and you _will_ end up hunting for that needle-in-a-haystack of why your data between systems doesn't reconcile.
 
-Visualized conceptually, it is less about creating 1:1 pipelines, but more like n:1:n with the platform at the center around which numerous systems orbit. Traditionally ETL would be done on a point-to-point basis, taking data from a source system, and loading it to a target one. If the data was needed elsewhere it would either be extracted twice, or taken from the original target. Both of these are undesirable. The former increases the load on the source system, and the latter introduced an unnecessary dependency and coupling in the design. In short, this is how the "big ball of mud" or "spaghetti" architectures start. By adopting a streaming platform we decouple the sources and targets for data, and thus introduce greater flexibility to build upon and evolve an architecture.
+Visualized conceptually, it is less about creating 1:1 pipelines, but more like n:1:n with the platform at the center around which numerous systems orbit. Traditionally ETL would be done on a point-to-point basis, taking data from a source system, and loading it to a target one. If the data was needed elsewhere it would either be extracted twice, or taken from the original target. Both of these are undesirable. The former increases the load on the source system, and the latter introduced an unnecessary dependency and coupling in the design. In short, this is how the "big ball of mud" or "spaghetti" architectures start. 
 
-< TODO some diagrams?  one showing events flowing into Kafka and used multiple places, one showing doing processing on same data multiple times in each app vs doing it once up stream>
+image::images/spaghetti.png[]
+
+By adopting a streaming platform we decouple the sources and targets for data, and thus introduce greater flexibility to build upon and evolve an architecture.
+
+image::images/streaming_platform.png[]
 
 == Kafka and the Request/Response pattern
 
@@ -370,9 +374,13 @@ Using Kibana on the data streaming into Elasticsearch from Kafka Connect it is e
 
 image:images/kibana_ratings_01.png[Kibana dashboard]
 
-=== Streaming data from Kafka to S3
+=== Streaming data from Kafka to a Data Lake
 
-Finally, we're going to stream the enriched ratings data to our data lake. From here it can be used for ad-hoc analysis, training machine learning models, data science projects, and so on. We're going to use Amazon's Simple Storage Service (S3), but could just as easily use Google's Cloud Storage (GCS) or another data store including HDFS, BigQuery, Redshift, Snowflake DB, and so on. Regardless of where we want the data, we're going to use Kafka Connect to stream it there. There are https://hub.confluent.io[numerous connectors available] for Kafka Connect, and as shown above with streaming data to Elasticsearch from Kafka, setup is just a matter of a simple configuration file:
+Finally, we're going to stream the enriched ratings data to our data lake. From here it can be used for ad-hoc analysis, training machine learning models, data science projects, and so on. 
+
+Data in Kafka can be streamed to https://hub.confluent.io[numerous types of target using Kafka Connect]. Here we'll see S3 and BigQuery, but could just as easily use HDFS, GCS, Redshift, Snowflake DB, and so on. 
+
+As shown above with streaming data to Elasticsearch from Kafka, setup is just a matter of a simple configuration file per target technology. 
 
 [source,json]
 ----
@@ -384,32 +392,30 @@ Finally, we're going to stream the enriched ratings data to our data lake. From 
   "s3.bucket.name": "rmoff-demo-ratings",
 ----
 
+
 With the data streaming to S3 we can see it in the bucket: 
 
 image::images/s3_bucket_ratings.png[]
 
-and now use it for ad-hoc analysis through numerous tools, including Amazon's own Athena: 
+We're also streaming the same data to Google's BigQuery: 
 
-TODO! 
-CREATE EXTERNAL TABLE ratings (
-  RATING_ID INT
-  CHANNEL STRING
-  STARS INT
-  MESSAGE STRING
-  ID INT
-  CLUB_STATUS STRING
-  EMAIL STRING
-  FIRST_NAME STRING
-  LAST_NAME STRING
- )
- ROW FORMAT SERDE 'org.openx.data.jsonserde.JsonSerDe'
- WITH SERDEPROPERTIES ('ignore.malformed.json' = 'true')
- LOCATION 's3://rmoff-demo-ratings/topics/ratings-with-customer-data/partition=0/';
+[source,json]
+----
+"name": "gbq-sink-ratings",
+"config": {
+  "connector.class":"com.wepay.kafka.connect.bigquery.BigQuerySinkConnector",
+  "topics": "ratings-with-customer-data",
+  "project":"rmoff",
+  "datasets":".*=ratings",
+----
 
+image::images/gbq01.png[]
 
-and QuickSight:
+One of the many applications that can be used to analyse the data from these cloud object stores is Google's Data Studio: 
 
-TODO! QUICKSIGHT
+image::images/gcp_datastudio.png[]
+
+The point here is less about the specific technology illustrated, but that _whatever_ technology you chose to use for your data lake, you can stream data to it easily using Kafka Connect.
 
 == Into the future with KSQL and the Streaming Platform
 
@@ -417,4 +423,4 @@ In this article we've seen some of the strong arguments for adopting a streaming
 
 With KSQL it is possible to write streaming processing applications using a language familiar to a large base of developers. These applications can be simple filters of streams of events passing through Kafka, or complex enrichment patterns drawing on data from other systems including databases. 
 
-To learn more about KSQL you can watch the tutorials and try them out for yourself. Sizing and deployment practices are documented, and there is an active community around it on the Confluent Community Slack group. The examples shown in this article are available on github TODO.
+To learn more about KSQL you can https://www.youtube.com/playlist?list=PLa7VYi0yPIH2eX8q3mPpZAn3qCS1eDX8W[watch the tutorials] and https://docs.confluent.io/current/ksql/docs/tutorials/index.html[try them out for yourself]. Sizing and deployment practices are documented, and there is an active community around it on the Confluent Community Slack group. The examples shown in this article are available https://github.com/confluentinc/infoq-kafka-ksql[on github].
