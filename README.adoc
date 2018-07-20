@@ -4,7 +4,7 @@ v0.10, 20 Jul 2018
 
 == Overview
 
-These are the code samples and snippets that were used in writing infoq_ksql_part2.adoc[this InfoQ article]. 
+These are the code samples and snippets that were used in writing link:infoq_ksql_part2.adoc[this InfoQ article]. 
 
 == Startup 
 
