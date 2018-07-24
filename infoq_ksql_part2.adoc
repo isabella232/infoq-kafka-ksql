@@ -301,15 +301,6 @@ ksql> SHOW QUERIES;
  CSAS_UNHAPPY_PLATINUM_CUSTOMERS_2 | UNHAPPY_PLATINUM_CUSTOMERS | CREATE STREAM UNHAPPY_PLATINUM_CUSTOMERS  […]
 ----
 
-== Kafka and the Request/Response pattern
-
-A common challenge to the concept of using Kafka as a platform on which to write applications is that the event-driven paradigm isn't applicable to the application's flow, and thus by extension Kafka isn't either. This is a fallacy, with two key points to remember:
-
-- It is fine to use  _both_ Event-Driven and Request/Response patterns - they are not mutually exclusive, and some requirements will demand Request/Response
-- The key driver should be the _requirements_; inertia of existing approaches should be challenged. By using an event-driven architecture for some or all of your application's messaging you benefit from the asynchronicity that it brings, its scalability, and its integration into Kafka and thus all other systems and applications using Kafka too.
-
-For extended discussion on this, see Ben Stopford's https://www.confluent.io/blog/build-services-backbone-events/[series of articles] and recent book, http://www.benstopford.com/2018/04/27/book-designing-event-driven-systems/[Designing Event Driven Systems].
-
 === Push notifications driven from Kafka topics
 
 The above `UNHAPPY_PLATINUM_CUSTOMERS` topic that we've created can be used to drive an application that we write to alert our customer operations team if an important customer has left a poor review. The key thing here is that we're driving a real-time action based on an event _that has just occurred_. It's no use finding out as the result of a batch-driven analysis next week that last week we upset a customer. We want to know _now_ so that we can act _now_ and deliver a superior experience to that customer.
@@ -354,6 +345,15 @@ It's worth restating here that the application we're building (call it a microse
 - We could scale out the application to handle greater number of notifications, without needing to modify the filtering logic
 - We could replace the application with an alternative one, without needing to modify the filtering logic
 - We could replace or amend the filtering logic, without needing to touch the notification application
+
+=== Kafka and the Request/Response pattern
+
+A common challenge to the concept of using Kafka as a platform on which to write applications is that the event-driven paradigm isn't applicable to the application's flow, and thus by extension Kafka isn't either. This is a fallacy, with two key points to remember:
+
+- It is fine to use  _both_ Event-Driven and Request/Response patterns - they are not mutually exclusive, and some requirements will demand Request/Response
+- The key driver should be the _requirements_; inertia of existing approaches should be challenged. By using an event-driven architecture for some or all of your application's messaging you benefit from the asynchronicity that it brings, its scalability, and its integration into Kafka and thus all other systems and applications using Kafka too.
+
+For extended discussion on this, see Ben Stopford's https://www.confluent.io/blog/build-services-backbone-events/[series of articles] and recent book, http://www.benstopford.com/2018/04/27/book-designing-event-driven-systems/[Designing Event Driven Systems].
 
 === Streaming data from Kafka to Elasticsearch for operational analytics
 
