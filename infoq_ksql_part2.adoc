@@ -24,12 +24,16 @@ One option is to store the reviews in a database, against which we then join a u
 
 image::images/all_thru_db.png[]
 
-In general, we would not expect to build the three applications against the same data store. Thus we extract the review and user data to target systems best suited for serving the dependent application. Perhaps a NoSQL store to drive the customer operations application, and something like HDFS/S3, or Snowflake DB for the analytics platform. Now we have the problem of:
+In general, we would not expect to build the three applications against the same data store. Thus we extract the review and user data to target systems best suited for serving the dependent application. Perhaps a NoSQL store to drive the customer operations application, the Elastic stack for the ops dashboard, and something like HDFS/S3, or BigQuery/Snowflake DB for the analytics platform. 
+
+image::images/complex01.png[]
+
+Now we have the problem of:
 
 - How to populate each target from the review data in a consistent and efficient way
 - How to enrich the review data with user information - do we try and do it once before loading each target, or do we repeat the process as part of the loading of each target? Can we do this with up-to-date versions of the customer data whilst also maintaining a low-latency feed?
 
-We also have longer-term architectural considerations. If we add new sources for the review data (e.g. mobile app, public API), how is that fed to the target systems? What if one of the target systems is offline, or running slowly--how do buffer the data or apply back-pressure? If we want to add new targets for the data in the future, how easy will it be to do this?
+We also have longer-term architectural considerations. If we add new sources for the review data (e.g. mobile app, public API), how is that fed to the target systems? What if one of the target systems is offline, or running slowly--how do we buffer the data or apply back-pressure? If we want to add new targets for the data in the future, how easy will it be to do this?
 
 == You say tomato, I say tomato
 
@@ -44,20 +48,20 @@ There are two key concepts here:
 * Data is created by an application, and we want it to be available to other applications.
 * We often want to process the data in some way before it can be used. This could be to cleanse it, to apply business logic to it, and so on
 
-Thinking about many applications that are being built nowadays, particularly in the microservices and event-driven space, what they do is take data from one or more systems, manipulate the data, and then pass it on to another application or system. For example—a fraud detection service will take data from merchant transactions, apply a fraud detection model, and write the results to a store such as Elastic for review by an expert. Can you spot the similarity to the above outline? Is this a microservice or ETL process? 
+Thinking about many applications that are being built nowadays, particularly in the microservices and event-driven space, what they do is take data from one or more systems, manipulate the data, and then pass it on to another application or system. For example—a fraud detection service will take data from merchant transactions, apply a fraud detection model, and write the results to a store such as Elastic for review by an expert. Can you spot the similarity to the above outline? Is this a microservice or ETL process? Or is actually what we used to call ETL a pattern that is a lot more broadly applicable nowadays?
 
 == The Streaming Platform in Action
 
-So what could be a better way to approach the problem above, instead of using batch and a database? Let's see what the above e-commerce example looks like in practice when implemented with a streaming platform. We're going to use the open-source Apache Kafka and KSQL projects to do this. KSQL is the streaming SQL engine for Apache Kafka, implemented on top of the Kafka Streams API which is part of Apache Kafka itself.
+Let's see what the above e-commerce example looks like in practice when implemented using a more modern design pattern, based on a streaming platform. We're going to use the open-source Apache Kafka and KSQL projects to do this. KSQL is the streaming SQL engine for Apache Kafka, implemented on top of the Kafka Streams API which is part of Apache Kafka itself.
 
 In our example, the _events_ are the reviews that the users submit on the site, and these are streamed directly into Kafka. From here, they can be joined to the user information _in real time_ and the resulting enriched data written back to Kafka. With this transformation done, the data can be used to drive the above applications and targets. The transformation logic is only required once. The data is extracted from the source system once. The transformed data can be used multiple times, by independent applications. New sources and targets can be added, without any change to the existing components. All of this is very low-latency.
 
 At a high level, the design looks like this:
 
 - Web app emits review directly to Kafka
-- Kafka Connect streams snapshot of user data from database, and keeps directly in sync with CDC
-- Stream processing adds user data, writes to new Kafka topic
-- Stream processing filters enriched Kafka topic for poor reviews from VIP users, writes to a new Kafka topic
+- Kafka Connect streams snapshot of user data from database into Kafka, and keeps it directly in sync with CDC
+- Stream processing adds user data to the review event, writes it back to a new Kafka topic
+- Stream processing filters the enriched Kafka topic for poor reviews from VIP users, writes to a new Kafka topic
 - Event-driven app listens to Kafka topic, pushes notifications as soon as VIP user leaves a poor review
 - Kafka Connect streams the data to Elasticsearch for operational dashboard
 - Kafka Connect streams the data to S3 for long-term ad-hoc analytics and use alongside other datasets
