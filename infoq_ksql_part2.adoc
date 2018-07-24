@@ -52,7 +52,7 @@ Thinking about many applications that are being built nowadays, particularly in 
 
 == The Streaming Platform in Action
 
-Let's see what the above e-commerce example looks like in practice when implemented using a more modern design pattern, based on a streaming platform. We're going to use the open-source Apache Kafka and KSQL projects to do this. KSQL is the streaming SQL engine for Apache Kafka, implemented on top of the Kafka Streams API which is part of Apache Kafka itself.
+Let's see what the above e-commerce example could looks like in practice, built on a streaming platform. We're going to use the open-source Apache Kafka and KSQL projects to do this. KSQL is the streaming SQL engine for Apache Kafka, implemented on top of the Kafka Streams API which is part of Apache Kafka itself.
 
 In our example, the _events_ are the reviews that the users submit on the site, and these are streamed directly into Kafka. From here, they can be joined to the user information _in real time_ and the resulting enriched data written back to Kafka. With this transformation done, the data can be used to drive the above applications and targets. The transformation logic is only required once. The data is extracted from the source system once. The transformed data can be used multiple times, by independent applications. New sources and targets can be added, without any change to the existing components. All of this is very low-latency.
 
@@ -70,7 +70,7 @@ image::images/design.png[]
 
 The benefits of this include:
 
-- Data enrichment is done once, and available for any consuming application
+- Data enrichment is done once, and available for any consuming application(s)
 - Processing is low latency
 - Notifications to customer ops team happen as soon as the VIP customer leaves a poor review - much better customer experience, more chance of retaining their business
 - Easy to scale by adding new nodes as required for greater throughput
@@ -79,7 +79,7 @@ The benefits of this include:
 
 Often the data used by one system will also be required by another, and the same goes for data that has been through enrichment or transformation. The work that we do to cleanse the inbound stream of customer details, standardize the country name, state/county identifiers, phone number formatting--all of this is going to be useful to both the analytics platform downstream, but also any other application that deals with customer data.
 
-A great pattern to adopt is to stream data as it is transformed _back into Kafka_. This makes that data available, in real time, to all applications directly. The alternative is the legacy pattern of writing transformed data down to a target (often a data lake), and having other applications pull the data from there--with the associated latency and complication to our systems architecture. 
+A great pattern to adopt is to stream data as it is transformed _back into Kafka_. This makes that data available, in real time, to all applications directly. The alternative is the legacy pattern of writing transformed data down to a target (often a data lake), and having other applications pull the data from there—with the associated latency and unnecessary coupling from an architectural point of view.
 
 By streaming the transformed data back into Kafka, we get some great benefits: -
 
@@ -96,6 +96,11 @@ image::images/spaghetti.png[]
 By adopting a streaming platform we decouple the sources and targets for data, and thus introduce greater flexibility to build upon and evolve an architecture.
 
 image::images/streaming_platform.png[]
+
+
+== Implementing the design
+
+Now let us look in detail at the detail of building this. 
 
 === Getting data into Kafka
 
@@ -295,15 +300,6 @@ ksql> SHOW QUERIES;
  CSAS_UNHAPPY_PLATINUM_CUSTOMERS_2 | UNHAPPY_PLATINUM_CUSTOMERS | CREATE STREAM UNHAPPY_PLATINUM_CUSTOMERS  […]
 ----
 
-== Kafka and the Request/Response pattern
-
-A common challenge to the concept of using Kafka as a platform on which to write applications is that the event-driven paradigm isn't applicable to the application's flow, and thus by extension Kafka isn't either. This is a fallacy, with two key points to remember:
-
-- It is fine to use  _both_ Event-Driven and Request/Response patterns - they are not mutually exclusive, and some requirements will demand Request/Response
-- The key driver should be the _requirements_; inertia of existing approaches should be challenged. By using an event-driven architecture for some or all of your application's messaging you benefit from the asynchronicity that it brings, its scalability, and its integration into Kafka and thus all other systems and applications using Kafka too.
-
-For extended discussion on this, see Ben Stopford's https://www.confluent.io/blog/build-services-backbone-events/[series of articles] and recent book, http://www.benstopford.com/2018/04/27/book-designing-event-driven-systems/[Designing Event Driven Systems].
-
 === Push notifications driven from Kafka topics
 
 The above `UNHAPPY_PLATINUM_CUSTOMERS` topic that we've created can be used to drive an application that we write to alert our customer operations team if an important customer has left a poor review. The key thing here is that we're driving a real-time action based on an event _that has just occurred_. It's no use finding out as the result of a batch-driven analysis next week that last week we upset a customer. We want to know _now_ so that we can act _now_ and deliver a superior experience to that customer.
@@ -348,6 +344,15 @@ It's worth restating here that the application we're building (call it a microse
 - We could scale out the application to handle greater number of notifications, without needing to modify the filtering logic
 - We could replace the application with an alternative one, without needing to modify the filtering logic
 - We could replace or amend the filtering logic, without needing to touch the notification application
+
+=== Kafka and the Request/Response pattern
+
+A common challenge to the concept of using Kafka as a platform on which to write applications is that the event-driven paradigm isn't applicable to the application's flow, and thus by extension Kafka isn't either. This is a fallacy, with two key points to remember:
+
+- It is fine to use  _both_ Event-Driven and Request/Response patterns - they are not mutually exclusive, and some requirements will demand Request/Response
+- The key driver should be the _requirements_; inertia of existing approaches should be challenged. By using an event-driven architecture for some or all of your application's messaging you benefit from the asynchronicity that it brings, its scalability, and its integration into Kafka and thus all other systems and applications using Kafka too.
+
+For extended discussion on this, see Ben Stopford's https://www.confluent.io/blog/build-services-backbone-events/[series of articles] and recent book, http://www.benstopford.com/2018/04/27/book-designing-event-driven-systems/[Designing Event Driven Systems].
 
 === Streaming data from Kafka to Elasticsearch for operational analytics
 
