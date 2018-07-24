@@ -99,6 +99,10 @@ By adopting a streaming platform we decouple the sources and targets for data, a
 
 image::images/streaming_platform.png[]
 
+== Implementing the design
+
+Now let us look in detail at the detail of building this. 
+
 === Getting data into Kafka
 
 Web applications have several options for streaming events into Kafka.
@@ -110,7 +114,7 @@ Web applications have several options for streaming events into Kafka.
 The messages sent from the web application into the Kafka topic `ratings` look like this:
 
 [source,json]
-——
+----
 {
   "rating_id": 604087,
   "user_id": 7,
@@ -120,7 +124,7 @@ The messages sent from the web application into the Kafka topic `ratings` look l
   "channel": "android",
   "message": "thank you for the most friendly, helpful experience today at your new lounge"
 }
-——
+----
 
 === Making Data from a Database Available in Kafka
 
@@ -137,7 +141,7 @@ image::images/cdc.png[]
 The messages in the Kafka topic `asgard.demo.CUSTOMERS` streamed from the database look like this:
 
 [source,json]
-——
+----
 {
   "id": 1,
   "first_name": "Rica",
@@ -151,7 +155,7 @@ The messages in the Kafka topic `asgard.demo.CUSTOMERS` streamed from the databa
   "messagetopic": "asgard.demo.CUSTOMERS",
   "messagesource": "Debezium CDC from MySQL on asgard"
 }
-——
+----
 
 
 === Enriching streams of events with information from a database
@@ -163,33 +167,33 @@ image::images/ksql_join.png[]
 The first step is to ensure that the messages in the customer topic are keyed on the join column, which in this case is the customer ID. We can actually do this re-partitioning using KSQL itself. The output of a KSQL `CREATE STREAM` is written to a Kafka topic, named by default after the stream itself
 
 [source,sql]
-——
-— Process all data that currently exists in topic, as well as future data
+----
+-- Process all data that currently exists in topic, as well as future data
 SET 'auto.offset.reset' = 'earliest';
 
-— Declare source stream
+-- Declare source stream
 CREATE STREAM CUSTOMERS_SRC WITH (KAFKA_TOPIC='asgard.demo.CUSTOMERS', VALUE_FORMAT='AVRO');
 
-— Re-partition on the ID column and set the target topic to
-— match the same number of partitions as the source ratings topic:
+-- Re-partition on the ID column and set the target topic to
+-- match the same number of partitions as the source ratings topic:
 CREATE STREAM CUSTOMERS_SRC_REKEY WITH (PARTITIONS=1) AS SELECT * FROM CUSTOMERS_SRC PARTITION BY ID;
-——
+----
 
 Now every message that arrives on the `asgard.demo.CUSTOMERS` topic will be written to the `CUSTOMERS_SRC_REKEY` Kafka topic with the correct message key set. Note that we've not had to declare any of the schema, because we're using Avro. KSQL and Kafka Connect both integrate seamlessly with the open-source Confluent Schema Registry to serialize/deserialize Avro data and store/retrieve schemas in the Schema Registry.
 
 To do the join we use standard SQL join syntax:
 
 [source,sql]
-——
-— Register the CUSTOMER data as a KSQL table, sourced from the re-partitioned topic
+----
+-- Register the CUSTOMER data as a KSQL table, sourced from the re-partitioned topic
 CREATE TABLE CUSTOMERS WITH (KAFKA_TOPIC='CUSTOMERS_SRC_REKEY', VALUE_FORMAT ='AVRO', KEY='ID');
 
-— Register the RATINGS data as a KSQL stream, sourced from the ratings topic
+-- Register the RATINGS data as a KSQL stream, sourced from the ratings topic
 CREATE STREAM RATINGS WITH (KAFKA_TOPIC='ratings',VALUE_FORMAT='AVRO');
 
-— Perform the join, writing to a new topic - note that the topic
-— name is explicitly set. If the KAFKA_TOPIC argument is omitted the target
-— topic will take the name of the stream or table being created.
+-- Perform the join, writing to a new topic - note that the topic
+-- name is explicitly set. If the KAFKA_TOPIC argument is omitted the target
+-- topic will take the name of the stream or table being created.
 CREATE STREAM RATINGS_ENRICHED WITH (KAFKA_TOPIC='ratings-with-customer-data', PARTITIONS=1) AS \
 SELECT R.RATING_ID, R.CHANNEL, R.STARS, R.MESSAGE, \
        C.ID, C.CLUB_STATUS, C.EMAIL, \
@@ -198,12 +202,12 @@ FROM RATINGS R \
      LEFT JOIN CUSTOMERS C \
        ON R.USER_ID = C.ID \
 WHERE C.FIRST_NAME IS NOT NULL ;
-——
+----
 
 We can inspect the number of messages processed by this query:
 
 [source,sql]
-——
+----
 ksql> DESCRIBE EXTENDED RATINGS_ENRICHED;
 
 Name                 : RATINGS_ENRICHED
@@ -217,11 +221,11 @@ Kafka topic          : ratings-with-customer-data (partitions: 4, replication: 1
 [...]
 
 Local runtime statistics
-————————————
+------------------------
 messages-per-sec:      3.61   total-messages:      2824     last-message: 6/12/18 11:58:27 AM UTC
  failed-messages:         0 failed-messages-per-sec:         0      last-failed:       n/a
 (Statistics of the local KSQL server interaction with the Kafka topic ratings-with-customer-data)
-——
+----
 
 In effect, this SQL statement is itself actually an application just as we would code in Java, Python, C…it's a continually running process that takes input data, processes it, and outputs it. The output we see above is the runtime metrics for this application.
 
@@ -239,7 +243,7 @@ We can build a second KSQL application which is driven by this derived topic, an
 SQL gives us the semantics with which to express the above requirements almost literally. We can use the KSQL CLI to validate the query first:
 
 [source,sql]
-——
+----
 SELECT CLUB_STATUS, EMAIL, STARS, MESSAGE \
 FROM   RATINGS_ENRICHED \
 WHERE  STARS < 3 \
@@ -247,27 +251,27 @@ WHERE  STARS < 3 \
 
 platinum | ltoopinc@icio.us | 1 | worst. flight. ever. #neveragain
 platinum | italboyd@imageshack.us | 2 | (expletive deleted)
-——
+----
 
 And then as before, the results of this continuous query can be persisted to a Kafka topic simply be prefixing the statement with `CREATE STREAM … AS` (often referred to as the acronym `CSAS`). Note that we have the option of including all source columns (`SELECT *`), or creating a subset of the available fields (`SELECT COL1, COL2`)—which we use depends on the purpose of the stream being created. We're also going to write the target messages as JSON:
 
 [source,sql]
-——
+----
 CREATE STREAM UNHAPPY_PLATINUM_CUSTOMERS \
        WITH (VALUE_FORMAT='JSON', PARTITIONS=1) AS \
 SELECT CLUB_STATUS, EMAIL, STARS, MESSAGE \
 FROM   RATINGS_ENRICHED \
 WHERE  STARS < 3 \
   AND  CLUB_STATUS = 'platinum';
-——
+----
 
 Inspecting the resulting Kafka topic, we can see that it contains just the events in which we are interested. Just to reinforce the point that this is a Kafka topic—and I could query it with KSQL—here I'll step away from KSQL and use the popular `kafkacat` tool to inspect it:
 
 [source,bash]
-——
+----
 kafka-console-consumer \
-—bootstrap-server kafka:9092 \
-—topic UNHAPPY_PLATINUM_CUSTOMERS | jq '.'
+--bootstrap-server kafka:9092 \
+--topic UNHAPPY_PLATINUM_CUSTOMERS | jq '.'
 {
   "CLUB_STATUS": {
     "string": "platinum"
@@ -282,20 +286,20 @@ kafka-console-consumer \
     "string": "Surprisingly good, maybe you are getting your mojo back at long last!"
   }
 }
-——
+----
 
 Before leaving KSQL, let's remind ourselves that we've just, in effect, written three streaming applications: 
 
 [source,sql]
-——
+----
 ksql> SHOW QUERIES;
 
  Query ID                          | Kafka Topic                | Query String
-——————————————————————————————————————————————————————
+------------------------------------------------------------------------------------------------------------
  CSAS_CUSTOMERS_SRC_REKEY_0        | CUSTOMERS_SRC_REKEY        | CREATE STREAM CUSTOMERS_SRC_REKEY  […]
  CSAS_RATINGS_ENRICHED_1           | RATINGS_ENRICHED           | CREATE STREAM RATINGS_ENRICHED  […]
  CSAS_UNHAPPY_PLATINUM_CUSTOMERS_2 | UNHAPPY_PLATINUM_CUSTOMERS | CREATE STREAM UNHAPPY_PLATINUM_CUSTOMERS  […]
-——
+----
 
 == Kafka and the Request/Response pattern
 
@@ -313,7 +317,7 @@ The above `UNHAPPY_PLATINUM_CUSTOMERS` topic that we've created can be used to d
 There are numerous Kafka client libraries for languages—almost certainly one for your language of choice. Here we'll use the open-source https://github.com/confluentinc/confluent-kafka-python/[Confluent Kafka library for Python]. It is a simple example of building an event-driven application, which listens for events on a Kafka topic, and then generates a push notification. We're going to use Slack as our platform for delivering this notification. The below code snippet omits any kind of error-handling, but serves to illustrate the simplicity with which we can integrate an https://api.slack.com/web[API such as Slack's] with a Kafka topic on which we listen to events to trigger an action.
 
 [source,python]
-——
+----
 from slackclient import SlackClient
 from confluent_kafka import Consumer, KafkaError
 sc = SlackClient('api-token-xxxxxxx')
@@ -341,7 +345,7 @@ text=('`%s` just left a bad review :disappointed:\n> %s\n\n_Please contact them 
 
 finally:
     c.close()
-——
+----
 
 image:images/slack_ratings.png[Slack notifications]
 
@@ -356,7 +360,7 @@ It's worth restating here that the application we're building (call it a microse
 Streaming data from Kafka to Elasticsearch is simple using Kafka Connect. It's provides scalable streaming integration driven just from a configuration file. An open-source connector for Elasticsearch is available both https://github.com/confluentinc/kafka-connect-elasticsearch/[standalone] and as part of https://www.confluent.io/download/[Confluent Platform]. Here we're going to stream the raw ratings as well as the alerts into Elasticsearch:
 
 [source,json]
-——
+----
 "name": "es_sink",
   "config": {
     "connector.class": "io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
@@ -365,7 +369,7 @@ Streaming data from Kafka to Elasticsearch is simple using Kafka Connect. It's p
     [...]
     }
 }
-——
+----
 
 Using Kibana on the data streaming into Elasticsearch from Kafka Connect it is easy to build a real-time dashboard on the enriched and filtered data:
 
@@ -380,14 +384,14 @@ Data in Kafka can be streamed to https://hub.confluent.io[numerous types of targ
 As shown above with streaming data to Elasticsearch from Kafka, setup is just a matter of a simple configuration file per target technology. 
 
 [source,json]
-——
+----
 "name": "s3-sink-ratings",
 "config": {
   "connector.class": "io.confluent.connect.s3.S3SinkConnector",
   "topics": "ratings-with-customer-data",
   "s3.region": "us-west-2",
   "s3.bucket.name": "rmoff-demo-ratings",
-——
+----
 
 
 With the data streaming to S3 we can see it in the bucket: 
@@ -397,14 +401,14 @@ image::images/s3_bucket_ratings.png[]
 We're also streaming the same data to Google's BigQuery: 
 
 [source,json]
-——
+----
 "name": "gbq-sink-ratings",
 "config": {
   "connector.class":"com.wepay.kafka.connect.bigquery.BigQuerySinkConnector",
   "topics": "ratings-with-customer-data",
   "project":"rmoff",
   "datasets":".*=ratings",
-——
+----
 
 image::images/gbq01.png[]
 
@@ -423,13 +427,14 @@ With KSQL it is possible to write streaming processing applications using a lang
 To learn more about KSQL you can https://www.youtube.com/playlist?list=PLa7VYi0yPIH2eX8q3mPpZAn3qCS1eDX8W[watch the tutorials] and https://docs.confluent.io/current/ksql/docs/tutorials/index.html[try them out for yourself]. Sizing and deployment practices are documented, and there is an active community around it on the Confluent Community Slack group. The examples shown in this article are available https://github.com/confluentinc/infoq-kafka-ksql[on github].
 
 
-== All data is a stream of events (needs a home / etl think piece)
+
+---
+
+== All data is a stream of events (needs a home / cut ?)
 
 Whether we're building fraud-detection systems, analytical platforms, or meal delivery services, they all work with data, they all need to process that data in some way—and they all generate more data as an output. The developers on these systems may not recognize this as the "ETL" of their data-engineering brethren, but in practice they are closely related.
 
 The core of this argument is events.
-
-—-
 
 ETL has always been a batch-driven process, primarily through technology constraints but also, to an extent, habit. This has dictated the mindset in developers that ETL is not applicable to those outside of the analytics space. After all, if we are building a transactional application with a user somewhere waiting for a response, this is mutually exclusive to batch. But as we've illustrated above there are a lot of parallels in how we are working with data. The unifying factor is that fundamentally _all data is a stream of events_.
 
