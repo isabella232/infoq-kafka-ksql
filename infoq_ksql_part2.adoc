@@ -1,10 +1,10 @@
 = Democratizing Stream Processing with Apache Kafka and KSQL, Part 2
 Robin Moffatt <robin@confluent.io>
-v0.20 20 Jul 2018
+v0.30 24 Jul 2018
 
 The way in which we handle data, and build applications to do so, is changing. Technology and development practices have evolved to a point where building systems in isolated silos is somewhat impractical, if not anachronistic. As the cliché of a cliché goes, data is the new oil, the life-blood of an organization—however you want to analogize it, the successful handling and exploitation of data in a company is critical to its success.
 
-In this article we're going to see a practical example of a powerful design pattern based aroud event-driven architectures and a streaming platform. We'll discuss why companies are moving to adopt this, instead of legacy approaches to integrating systems—as well as driving realtime requirements. 
+In this article we're going to see a practical example of a powerful design pattern based around event-driven architectures and a streaming platform. We'll discuss why companies are moving to adopt this, instead of legacy approaches to integrating systems—as well as driving real time requirements. 
 
 Part of this shift away that is happening is the blurring of lines between "analytics" systems and "transactional" systems. In the old days, we built our transactional systems on which our business ran, and then a separate team would be responsible for extracting that data and building analytics (or BI, or MIS, or DSS, depending on your age) on that. It was done in an isolated manner, and was typically a one-way feed. Analytics teams took the data, on which processing was done to cleanse and enrich it, and then reports were built.
 
@@ -16,13 +16,13 @@ As an example of this, retail banks are faced with the challenge of providing co
 
 Consider a simple example from the world of e-commerce: On a website, user reviews are tracked through a series of events. Information about these users such as their name, contact details, and loyalty club status is held on a database elsewhere. There are at least three uses for this review data:
 
-- Customer Operations--If a user with high loyalty club status leaves a poor review, we want to do something about it straight away, to reduce the risk of them churning. We want an application that will notify us as soon as a review meeting this condition is met. By doing so immediately we offer customer service that is far superior than had we waited for a batch process to run and flag the user for contact at a later date.
-- Operational dashboard showing live feed of reviews, rolling aggregates for counts, median score, and so on--broken down by user region, etc.
+- Customer Operations—If a user with high loyalty club status leaves a poor review, we want to do something about it straight away, to reduce the risk of them churning. We want an application that will notify us as soon as a review meeting this condition is met. By doing so immediately we offer customer service that is far superior than had we waited for a batch process to run and flag the user for contact at a later date.
+- Operational dashboard showing live feed of reviews, rolling aggregates for counts, median score, and so on—broken down by user region, etc.
 - Ad-hoc analytics on review data combined with other data (whether in a data lake, data warehouse, etc). This could extend to broader data science practices and machine learning use.
 
 All of these need access to the review information along with details of the user.
 
-One option is to store the reviews in a database, against which we then join a user table. Perhaps we drive all the requirements against the data held in this database. There are several challenges to this approach. Since we are coupling together three separate applications to the same schema and access patterns, it becomes more difficult to make changes to one without impacting the others. In addition, one application may start to impact the performance of another--consider a large-scale analytics workload and how this could affect the operational behavior of the customer ops alerting application.
+One option is to store the reviews in a database, against which we then join a user table. Perhaps we drive all the requirements against the data held in this database. There are several challenges to this approach. Since we are coupling together three separate applications to the same schema and access patterns, it becomes more difficult to make changes to one without impacting the others. In addition, one application may start to impact the performance of another—consider a large-scale analytics workload and how this could affect the operational behavior of the customer ops alerting application.
 
 image::images/all_thru_db.png[]
 
@@ -35,7 +35,7 @@ Now we have the problem of:
 - How to populate each target from the review data in a consistent and efficient way
 - How to enrich the review data with user information - do we try and do it once before loading each target, or do we repeat the process as part of the loading of each target? Can we do this with up-to-date versions of the customer data whilst also maintaining a low-latency feed?
 
-We also have longer-term architectural considerations. If we add new sources for the review data (e.g. mobile app, public API), how is that fed to the target systems? What if one of the target systems is offline, or running slowly--how do we buffer the data or apply back-pressure? If we want to add new targets for the data in the future, how easy will it be to do this?
+We also have longer-term architectural considerations. If we add new sources for the review data (e.g. mobile app, public API), how is that fed to the target systems? What if one of the target systems is offline, or running slowly—how do we buffer the data or apply back-pressure? If we want to add new targets for the data in the future, how easy will it be to do this?
 
 == You say tomato, I say tomato
 
@@ -54,7 +54,7 @@ Thinking about many applications that are being built nowadays, particularly in 
 
 == The Streaming Platform in Action
 
-Let's see what the above e-commerce example could looks like in practice, built on a streaming platform. We're going to use the open-source Apache Kafka and KSQL projects to do this. KSQL is the streaming SQL engine for Apache Kafka, implemented on top of the Kafka Streams API which is part of Apache Kafka itself.
+Let's see what the above e-commerce example looks like in practice when implemented using a more modern design pattern, based on a streaming platform. We're going to use the open-source Apache Kafka and KSQL projects to do this. KSQL is the streaming SQL engine for Apache Kafka, implemented on top of the Kafka Streams API which is part of Apache Kafka itself.
 
 In our example, the _events_ are the reviews that the users submit on the site, and these are streamed directly into Kafka. From here, they can be joined to the user information _in real time_ and the resulting enriched data written back to Kafka. With this transformation done, the data can be used to drive the above applications and targets. The transformation logic is only required once. The data is extracted from the source system once. The transformed data can be used multiple times, by independent applications. New sources and targets can be added, without any change to the existing components. All of this is very low-latency.
 
@@ -72,22 +72,22 @@ image::images/design.png[]
 
 The benefits of this include:
 
-- Data enrichment is done once, and available for any consuming application(s)
+- Data enrichment is done once, and available for any consuming application
 - Processing is low latency
 - Notifications to customer ops team happen as soon as the VIP customer leaves a poor review - much better customer experience, more chance of retaining their business
 - Easy to scale by adding new nodes as required for greater throughput
 
 == Transform Once, Use Many
 
-Often the data used by one system will also be required by another, and the same goes for data that has been through enrichment or transformation. The work that we do to cleanse the inbound stream of customer details, standardize the country name, state/county identifiers, phone number formatting--all of this is going to be useful to both the analytics platform downstream, but also any other application that deals with customer data.
+Often the data used by one system will also be required by another, and the same goes for data that has been through enrichment or transformation. The work that we do to cleanse the inbound stream of customer details, standardize the country name, state/county identifiers, phone number formatting—all of this is going to be useful to both the analytics platform downstream, but also any other application that deals with customer data.
 
-A great pattern to adopt is to stream data as it is transformed _back into Kafka_. This makes that data available, in real time, to all applications directly. The alternative is the legacy pattern of writing transformed data down to a target (often a data lake), and having other applications pull the data from there—with the associated latency and unnecessary coupling from an architectural point of view.
+A great pattern to adopt is to stream data as it is transformed _back into Kafka_. This makes that data available, in real time, to all applications directly. The alternative is the legacy pattern of writing transformed data down to a target (often a data lake), and having other applications pull the data from there—with the associated latency and complication to our systems architecture. 
 
 By streaming the transformed data back into Kafka, we get some great benefits: -
 
 1. Importantly, there is separation of responsibilities between the transformation, and the application/system consuming that data. The latency remains low, as the transformed data that is streamed to Kafka can be streamed straight to the desired target. Even for a transformation in which you think only your application will want the transformed data, this pattern is a useful one.
 
-2. The transformed data can now also be used to drive other applications. Because Kafka persists data, the same data can be used by multiple consumers--and completely independently. Unlike traditional message queues, data is not removed from Kafka once it has been consumed. 
+2. The transformed data can now also be used to drive other applications. Because Kafka persists data, the same data can be used by multiple consumers—and completely independently. Unlike traditional message queues, data is not removed from Kafka once it has been consumed. 
 
 3. There is a single instance of the transformation code with any associated business logic that it implements. That means a single place in which to maintain it, a standard definition for any measures derived, and consistency in the data across systems. Contrast this to multiple systems each performing the same transformation logic. For the best will in the world, the code _will_ diverge, and you _will_ end up hunting for that needle-in-a-haystack of why your data between systems doesn't reconcile.
 
@@ -98,11 +98,6 @@ image::images/spaghetti.png[]
 By adopting a streaming platform we decouple the sources and targets for data, and thus introduce greater flexibility to build upon and evolve an architecture.
 
 image::images/streaming_platform.png[]
-
-
-== Implementing the design
-
-Now let us look in detail at the detail of building this. 
 
 === Getting data into Kafka
 
@@ -115,7 +110,7 @@ Web applications have several options for streaming events into Kafka.
 The messages sent from the web application into the Kafka topic `ratings` look like this:
 
 [source,json]
-----
+——
 {
   "rating_id": 604087,
   "user_id": 7,
@@ -125,7 +120,7 @@ The messages sent from the web application into the Kafka topic `ratings` look l
   "channel": "android",
   "message": "thank you for the most friendly, helpful experience today at your new lounge"
 }
-----
+——
 
 === Making Data from a Database Available in Kafka
 
@@ -142,7 +137,7 @@ image::images/cdc.png[]
 The messages in the Kafka topic `asgard.demo.CUSTOMERS` streamed from the database look like this:
 
 [source,json]
-----
+——
 {
   "id": 1,
   "first_name": "Rica",
@@ -156,7 +151,7 @@ The messages in the Kafka topic `asgard.demo.CUSTOMERS` streamed from the databa
   "messagetopic": "asgard.demo.CUSTOMERS",
   "messagesource": "Debezium CDC from MySQL on asgard"
 }
-----
+——
 
 
 === Enriching streams of events with information from a database
@@ -168,33 +163,33 @@ image::images/ksql_join.png[]
 The first step is to ensure that the messages in the customer topic are keyed on the join column, which in this case is the customer ID. We can actually do this re-partitioning using KSQL itself. The output of a KSQL `CREATE STREAM` is written to a Kafka topic, named by default after the stream itself
 
 [source,sql]
-----
--- Process all data that currently exists in topic, as well as future data
+——
+— Process all data that currently exists in topic, as well as future data
 SET 'auto.offset.reset' = 'earliest';
 
--- Declare source stream
+— Declare source stream
 CREATE STREAM CUSTOMERS_SRC WITH (KAFKA_TOPIC='asgard.demo.CUSTOMERS', VALUE_FORMAT='AVRO');
 
--- Re-partition on the ID column and set the target topic to
--- match the same number of partitions as the source ratings topic:
+— Re-partition on the ID column and set the target topic to
+— match the same number of partitions as the source ratings topic:
 CREATE STREAM CUSTOMERS_SRC_REKEY WITH (PARTITIONS=1) AS SELECT * FROM CUSTOMERS_SRC PARTITION BY ID;
-----
+——
 
 Now every message that arrives on the `asgard.demo.CUSTOMERS` topic will be written to the `CUSTOMERS_SRC_REKEY` Kafka topic with the correct message key set. Note that we've not had to declare any of the schema, because we're using Avro. KSQL and Kafka Connect both integrate seamlessly with the open-source Confluent Schema Registry to serialize/deserialize Avro data and store/retrieve schemas in the Schema Registry.
 
 To do the join we use standard SQL join syntax:
 
 [source,sql]
-----
--- Register the CUSTOMER data as a KSQL table, sourced from the re-partitioned topic
+——
+— Register the CUSTOMER data as a KSQL table, sourced from the re-partitioned topic
 CREATE TABLE CUSTOMERS WITH (KAFKA_TOPIC='CUSTOMERS_SRC_REKEY', VALUE_FORMAT ='AVRO', KEY='ID');
 
--- Register the RATINGS data as a KSQL stream, sourced from the ratings topic
+— Register the RATINGS data as a KSQL stream, sourced from the ratings topic
 CREATE STREAM RATINGS WITH (KAFKA_TOPIC='ratings',VALUE_FORMAT='AVRO');
 
--- Perform the join, writing to a new topic - note that the topic
--- name is explicitly set. If the KAFKA_TOPIC argument is omitted the target
--- topic will take the name of the stream or table being created.
+— Perform the join, writing to a new topic - note that the topic
+— name is explicitly set. If the KAFKA_TOPIC argument is omitted the target
+— topic will take the name of the stream or table being created.
 CREATE STREAM RATINGS_ENRICHED WITH (KAFKA_TOPIC='ratings-with-customer-data', PARTITIONS=1) AS \
 SELECT R.RATING_ID, R.CHANNEL, R.STARS, R.MESSAGE, \
        C.ID, C.CLUB_STATUS, C.EMAIL, \
@@ -203,12 +198,12 @@ FROM RATINGS R \
      LEFT JOIN CUSTOMERS C \
        ON R.USER_ID = C.ID \
 WHERE C.FIRST_NAME IS NOT NULL ;
-----
+——
 
 We can inspect the number of messages processed by this query:
 
 [source,sql]
-----
+——
 ksql> DESCRIBE EXTENDED RATINGS_ENRICHED;
 
 Name                 : RATINGS_ENRICHED
@@ -222,11 +217,11 @@ Kafka topic          : ratings-with-customer-data (partitions: 4, replication: 1
 [...]
 
 Local runtime statistics
-------------------------
+————————————
 messages-per-sec:      3.61   total-messages:      2824     last-message: 6/12/18 11:58:27 AM UTC
  failed-messages:         0 failed-messages-per-sec:         0      last-failed:       n/a
 (Statistics of the local KSQL server interaction with the Kafka topic ratings-with-customer-data)
-----
+——
 
 In effect, this SQL statement is itself actually an application just as we would code in Java, Python, C…it's a continually running process that takes input data, processes it, and outputs it. The output we see above is the runtime metrics for this application.
 
@@ -244,7 +239,7 @@ We can build a second KSQL application which is driven by this derived topic, an
 SQL gives us the semantics with which to express the above requirements almost literally. We can use the KSQL CLI to validate the query first:
 
 [source,sql]
-----
+——
 SELECT CLUB_STATUS, EMAIL, STARS, MESSAGE \
 FROM   RATINGS_ENRICHED \
 WHERE  STARS < 3 \
@@ -252,27 +247,27 @@ WHERE  STARS < 3 \
 
 platinum | ltoopinc@icio.us | 1 | worst. flight. ever. #neveragain
 platinum | italboyd@imageshack.us | 2 | (expletive deleted)
-----
+——
 
 And then as before, the results of this continuous query can be persisted to a Kafka topic simply be prefixing the statement with `CREATE STREAM … AS` (often referred to as the acronym `CSAS`). Note that we have the option of including all source columns (`SELECT *`), or creating a subset of the available fields (`SELECT COL1, COL2`)—which we use depends on the purpose of the stream being created. We're also going to write the target messages as JSON:
 
 [source,sql]
-----
+——
 CREATE STREAM UNHAPPY_PLATINUM_CUSTOMERS \
        WITH (VALUE_FORMAT='JSON', PARTITIONS=1) AS \
 SELECT CLUB_STATUS, EMAIL, STARS, MESSAGE \
 FROM   RATINGS_ENRICHED \
 WHERE  STARS < 3 \
   AND  CLUB_STATUS = 'platinum';
-----
+——
 
 Inspecting the resulting Kafka topic, we can see that it contains just the events in which we are interested. Just to reinforce the point that this is a Kafka topic—and I could query it with KSQL—here I'll step away from KSQL and use the popular `kafkacat` tool to inspect it:
 
 [source,bash]
-----
+——
 kafka-console-consumer \
---bootstrap-server kafka:9092 \
---topic UNHAPPY_PLATINUM_CUSTOMERS | jq '.'
+—bootstrap-server kafka:9092 \
+—topic UNHAPPY_PLATINUM_CUSTOMERS | jq '.'
 {
   "CLUB_STATUS": {
     "string": "platinum"
@@ -287,20 +282,29 @@ kafka-console-consumer \
     "string": "Surprisingly good, maybe you are getting your mojo back at long last!"
   }
 }
-----
+——
 
 Before leaving KSQL, let's remind ourselves that we've just, in effect, written three streaming applications: 
 
 [source,sql]
-----
+——
 ksql> SHOW QUERIES;
 
  Query ID                          | Kafka Topic                | Query String
-------------------------------------------------------------------------------------------------------------
+——————————————————————————————————————————————————————
  CSAS_CUSTOMERS_SRC_REKEY_0        | CUSTOMERS_SRC_REKEY        | CREATE STREAM CUSTOMERS_SRC_REKEY  […]
  CSAS_RATINGS_ENRICHED_1           | RATINGS_ENRICHED           | CREATE STREAM RATINGS_ENRICHED  […]
  CSAS_UNHAPPY_PLATINUM_CUSTOMERS_2 | UNHAPPY_PLATINUM_CUSTOMERS | CREATE STREAM UNHAPPY_PLATINUM_CUSTOMERS  […]
-----
+——
+
+== Kafka and the Request/Response pattern
+
+A common challenge to the concept of using Kafka as a platform on which to write applications is that the event-driven paradigm isn't applicable to the application's flow, and thus by extension Kafka isn't either. This is a fallacy, with two key points to remember:
+
+- It is fine to use  _both_ Event-Driven and Request/Response patterns - they are not mutually exclusive, and some requirements will demand Request/Response
+- The key driver should be the _requirements_; inertia of existing approaches should be challenged. By using an event-driven architecture for some or all of your application's messaging you benefit from the asynchronicity that it brings, its scalability, and its integration into Kafka and thus all other systems and applications using Kafka too.
+
+For extended discussion on this, see Ben Stopford's https://www.confluent.io/blog/build-services-backbone-events/[series of articles] and recent book, http://www.benstopford.com/2018/04/27/book-designing-event-driven-systems/[Designing Event Driven Systems].
 
 === Push notifications driven from Kafka topics
 
@@ -309,7 +313,7 @@ The above `UNHAPPY_PLATINUM_CUSTOMERS` topic that we've created can be used to d
 There are numerous Kafka client libraries for languages—almost certainly one for your language of choice. Here we'll use the open-source https://github.com/confluentinc/confluent-kafka-python/[Confluent Kafka library for Python]. It is a simple example of building an event-driven application, which listens for events on a Kafka topic, and then generates a push notification. We're going to use Slack as our platform for delivering this notification. The below code snippet omits any kind of error-handling, but serves to illustrate the simplicity with which we can integrate an https://api.slack.com/web[API such as Slack's] with a Kafka topic on which we listen to events to trigger an action.
 
 [source,python]
-----
+——
 from slackclient import SlackClient
 from confluent_kafka import Consumer, KafkaError
 sc = SlackClient('api-token-xxxxxxx')
@@ -337,7 +341,7 @@ text=('`%s` just left a bad review :disappointed:\n> %s\n\n_Please contact them 
 
 finally:
     c.close()
-----
+——
 
 image:images/slack_ratings.png[Slack notifications]
 
@@ -347,21 +351,12 @@ It's worth restating here that the application we're building (call it a microse
 - We could replace the application with an alternative one, without needing to modify the filtering logic
 - We could replace or amend the filtering logic, without needing to touch the notification application
 
-=== Kafka and the Request/Response pattern
-
-A common challenge to the concept of using Kafka as a platform on which to write applications is that the event-driven paradigm isn't applicable to the application's flow, and thus by extension Kafka isn't either. This is a fallacy, with two key points to remember:
-
-- It is fine to use  _both_ Event-Driven and Request/Response patterns - they are not mutually exclusive, and some requirements will demand Request/Response
-- The key driver should be the _requirements_; inertia of existing approaches should be challenged. By using an event-driven architecture for some or all of your application's messaging you benefit from the asynchronicity that it brings, its scalability, and its integration into Kafka and thus all other systems and applications using Kafka too.
-
-For extended discussion on this, see Ben Stopford's https://www.confluent.io/blog/build-services-backbone-events/[series of articles] and recent book, http://www.benstopford.com/2018/04/27/book-designing-event-driven-systems/[Designing Event Driven Systems].
-
 === Streaming data from Kafka to Elasticsearch for operational analytics
 
 Streaming data from Kafka to Elasticsearch is simple using Kafka Connect. It's provides scalable streaming integration driven just from a configuration file. An open-source connector for Elasticsearch is available both https://github.com/confluentinc/kafka-connect-elasticsearch/[standalone] and as part of https://www.confluent.io/download/[Confluent Platform]. Here we're going to stream the raw ratings as well as the alerts into Elasticsearch:
 
 [source,json]
-----
+——
 "name": "es_sink",
   "config": {
     "connector.class": "io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
@@ -370,7 +365,7 @@ Streaming data from Kafka to Elasticsearch is simple using Kafka Connect. It's p
     [...]
     }
 }
-----
+——
 
 Using Kibana on the data streaming into Elasticsearch from Kafka Connect it is easy to build a real-time dashboard on the enriched and filtered data:
 
@@ -385,14 +380,14 @@ Data in Kafka can be streamed to https://hub.confluent.io[numerous types of targ
 As shown above with streaming data to Elasticsearch from Kafka, setup is just a matter of a simple configuration file per target technology. 
 
 [source,json]
-----
+——
 "name": "s3-sink-ratings",
 "config": {
   "connector.class": "io.confluent.connect.s3.S3SinkConnector",
   "topics": "ratings-with-customer-data",
   "s3.region": "us-west-2",
   "s3.bucket.name": "rmoff-demo-ratings",
-----
+——
 
 
 With the data streaming to S3 we can see it in the bucket: 
@@ -402,14 +397,14 @@ image::images/s3_bucket_ratings.png[]
 We're also streaming the same data to Google's BigQuery: 
 
 [source,json]
-----
+——
 "name": "gbq-sink-ratings",
 "config": {
   "connector.class":"com.wepay.kafka.connect.bigquery.BigQuerySinkConnector",
   "topics": "ratings-with-customer-data",
   "project":"rmoff",
   "datasets":".*=ratings",
-----
+——
 
 image::images/gbq01.png[]
 
@@ -430,16 +425,16 @@ To learn more about KSQL you can https://www.youtube.com/playlist?list=PLa7VYi0y
 
 == All data is a stream of events (needs a home / etl think piece)
 
-Whether we're building fraud-detection systems, analytical platforms, or meal delivery services, they all work with data, they all need to process that data in some way--and they all generate more data as an output. The developers on these systems may not recognize this as the "ETL" of their data-engineering brethren, but in practice they are closely related.
+Whether we're building fraud-detection systems, analytical platforms, or meal delivery services, they all work with data, they all need to process that data in some way—and they all generate more data as an output. The developers on these systems may not recognize this as the "ETL" of their data-engineering brethren, but in practice they are closely related.
 
 The core of this argument is events.
 
----
+—-
 
 ETL has always been a batch-driven process, primarily through technology constraints but also, to an extent, habit. This has dictated the mindset in developers that ETL is not applicable to those outside of the analytics space. After all, if we are building a transactional application with a user somewhere waiting for a response, this is mutually exclusive to batch. But as we've illustrated above there are a lot of parallels in how we are working with data. The unifying factor is that fundamentally _all data is a stream of events_.
 
-The key shift here is that instead of pulling data from a system at the point at which we want to process it, we make available data from a source system _as soon as the event occurs_. That may be a website click, and application internal event, a sensor reading--and even a change in a database table. Once emitted, the event can be processed (transformed), and consumed as required at a latency of our choosing. This may be in real time, or it may be in batch fashion. The point is, the data is made available straight away, and thus low-latency is a deliberate design decision built in. Batch, on the other hand, builds in latency as an unavoidable characteristic--by definition.
+The key shift here is that instead of pulling data from a system at the point at which we want to process it, we make available data from a source system _as soon as the event occurs_. That may be a website click, and application internal event, a sensor reading—and even a change in a database table. Once emitted, the event can be processed (transformed), and consumed as required at a latency of our choosing. This may be in real time, or it may be in batch fashion. The point is, the data is made available straight away, and thus low-latency is a deliberate design decision built in. Batch, on the other hand, builds in latency as an unavoidable characteristic—by definition.
 
-By modeling data as a real-time stream of events, and understanding that data generally requires processing (transformation), we arrive at a point where we want to build applications (whether transactional or analytical), and a common platform on which to do this makes sense. A platform into which all events are sent _as they occur_, on which we can persist data for re-use and re-consumption, and in which we can process the data as it flows. The data in question is both "fact" data (business events), as well as "reference" data (dimensions)--all of this is fundamentally events that we stream into, persist, and process in the same platform.
+By modeling data as a real-time stream of events, and understanding that data generally requires processing (transformation), we arrive at a point where we want to build applications (whether transactional or analytical), and a common platform on which to do this makes sense. A platform into which all events are sent _as they occur_, on which we can persist data for re-use and re-consumption, and in which we can process the data as it flows. The data in question is both "fact" data (business events), as well as "reference" data (dimensions)—all of this is fundamentally events that we stream into, persist, and process in the same platform.
 
 Thus, Apache Kafka as a streaming platform intersects equally the seemingly-disparate worlds of application developers and "big data". Applications requiring real-time feeds of data, event-driven applications, and batch-driven systems, can all be built on Kafka. Kafka provides the integration that we expect for an ETL platform, and it provides the real-time capabilities that an event-driven application demands. By using Kafka for both, we end up with a whole greater than the sum of its parts. Applications can all take advantage of each others data, analytics can be driven in real-time, and insights from these analytics can be fed back into the source applications. A virtuous feedback loop is created.
