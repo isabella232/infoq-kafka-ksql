@@ -101,7 +101,7 @@ image::images/streaming_platform.png[]
 
 == Implementing the design
 
-Now let us look in detail at the detail of building this. 
+Now let us look in detail at the detail of building this. You can find the code for all of the examples, along with a docker-compose files, https://github.com/confluentinc/infoq-kafka-ksql[on github].
 
 === Getting data into Kafka
 
