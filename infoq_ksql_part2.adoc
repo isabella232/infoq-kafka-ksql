@@ -427,19 +427,3 @@ With KSQL it is possible to write streaming processing applications using a lang
 
 To learn more about KSQL you can https://www.youtube.com/playlist?list=PLa7VYi0yPIH2eX8q3mPpZAn3qCS1eDX8W[watch the tutorials] and https://docs.confluent.io/current/ksql/docs/tutorials/index.html[try them out for yourself]. Sizing and deployment practices are documented, and there is an active community around it on the Confluent Community Slack group. The examples shown in this article are available https://github.com/confluentinc/infoq-kafka-ksql[on github].
 
-
-== All data is a stream of events (needs a home / etl think piece)
-
-Whether we're building fraud-detection systems, analytical platforms, or meal delivery services, they all work with data, they all need to process that data in some way--and they all generate more data as an output. The developers on these systems may not recognize this as the "ETL" of their data-engineering brethren, but in practice they are closely related.
-
-The core of this argument is events.
-
----
-
-ETL has always been a batch-driven process, primarily through technology constraints but also, to an extent, habit. This has dictated the mindset in developers that ETL is not applicable to those outside of the analytics space. After all, if we are building a transactional application with a user somewhere waiting for a response, this is mutually exclusive to batch. But as we've illustrated above there are a lot of parallels in how we are working with data. The unifying factor is that fundamentally _all data is a stream of events_.
-
-The key shift here is that instead of pulling data from a system at the point at which we want to process it, we make available data from a source system _as soon as the event occurs_. That may be a website click, and application internal event, a sensor reading--and even a change in a database table. Once emitted, the event can be processed (transformed), and consumed as required at a latency of our choosing. This may be in real time, or it may be in batch fashion. The point is, the data is made available straight away, and thus low-latency is a deliberate design decision built in. Batch, on the other hand, builds in latency as an unavoidable characteristic--by definition.
-
-By modeling data as a real-time stream of events, and understanding that data generally requires processing (transformation), we arrive at a point where we want to build applications (whether transactional or analytical), and a common platform on which to do this makes sense. A platform into which all events are sent _as they occur_, on which we can persist data for re-use and re-consumption, and in which we can process the data as it flows. The data in question is both "fact" data (business events), as well as "reference" data (dimensions)--all of this is fundamentally events that we stream into, persist, and process in the same platform.
-
-Thus, Apache Kafka as a streaming platform intersects equally the seemingly-disparate worlds of application developers and "big data". Applications requiring real-time feeds of data, event-driven applications, and batch-driven systems, can all be built on Kafka. Kafka provides the integration that we expect for an ETL platform, and it provides the real-time capabilities that an event-driven application demands. By using Kafka for both, we end up with a whole greater than the sum of its parts. Applications can all take advantage of each others data, analytics can be driven in real-time, and insights from these analytics can be fed back into the source applications. A virtuous feedback loop is created.
