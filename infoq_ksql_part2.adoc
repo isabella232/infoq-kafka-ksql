@@ -1,6 +1,6 @@
 = Democratizing Stream Processing with Apache Kafka and KSQL, Part 2
 Robin Moffatt <robin@confluent.io>
-v0.20 20 Jul 2018
+v0.30 24 Jul 2018
 
 The way in which we handle data, and build applications, is changing. Technology and development practices have evolved to a point where building systems in isolated silos is somewhat impractical, if not anachronistic. As the cliché of a cliché goes, data is the new oil, the life-blood of an organization—however you want to analogize it, the successful handling and exploitation of data in a company is critical to its success.
 
@@ -16,13 +16,13 @@ As an example of this, retail banks are faced with the challenge of providing co
 
 Consider a simple example from the world of e-commerce: On a website, user reviews are tracked through a series of events. Information about these users such as their name, contact details, and loyalty club status is held on a database elsewhere. There are at least three uses for this review data:
 
-- Customer Operations--If a user with high loyalty club status leaves a poor review, we want to do something about it straight away, to reduce the risk of them churning. We want an application that will notify us as soon as a review meeting this condition is met. By doing so immediately we offer customer service that is far superior than had we waited for a batch process to run and flag the user for contact at a later date.
-- Operational dashboard showing live feed of reviews, rolling aggregates for counts, median score, and so on--broken down by user region, etc.
+- Customer Operations—If a user with high loyalty club status leaves a poor review, we want to do something about it straight away, to reduce the risk of them churning. We want an application that will notify us as soon as a review meeting this condition is met. By doing so immediately we offer customer service that is far superior than had we waited for a batch process to run and flag the user for contact at a later date.
+- Operational dashboard showing live feed of reviews, rolling aggregates for counts, median score, and so on—broken down by user region, etc.
 - Ad-hoc analytics on review data combined with other data (whether in a data lake, data warehouse, etc). This could extend to broader data science practices and machine learning use.
 
 All of these need access to the review information along with details of the user.
 
-One option is to store the reviews in a database, against which we then join a user table. Perhaps we drive all the requirements against the data held in this database. There are several challenges to this approach. Since we are coupling together three separate applications to the same schema and access patterns, it becomes more difficult to make changes to one without impacting the others. In addition, one application may start to impact the performance of another--consider a large-scale analytics workload and how this could affect the operational behavior of the customer ops alerting application.
+One option is to store the reviews in a database, against which we then join a user table. Perhaps we drive all the requirements against the data held in this database. There are several challenges to this approach. Since we are coupling together three separate applications to the same schema and access patterns, it becomes more difficult to make changes to one without impacting the others. In addition, one application may start to impact the performance of another—consider a large-scale analytics workload and how this could affect the operational behavior of the customer ops alerting application.
 
 image::images/all_thru_db.png[]
 
@@ -35,7 +35,7 @@ Now we have the problem of:
 - How to populate each target from the review data in a consistent and efficient way
 - How to enrich the review data with user information - do we try and do it once before loading each target, or do we repeat the process as part of the loading of each target? Can we do this with up-to-date versions of the customer data whilst also maintaining a low-latency feed?
 
-We also have longer-term architectural considerations. If we add new sources for the review data (e.g. mobile app, public API), how is that fed to the target systems? What if one of the target systems is offline, or running slowly--how do we buffer the data or apply back-pressure? If we want to add new targets for the data in the future, how easy will it be to do this?
+We also have longer-term architectural considerations. If we add new sources for the review data (e.g. mobile app, public API), how is that fed to the target systems? What if one of the target systems is offline, or running slowly—how do we buffer the data or apply back-pressure? If we want to add new targets for the data in the future, how easy will it be to do this?
 
 == You say tomato, I say tomato
 
@@ -54,7 +54,7 @@ Thinking about many applications that are being built nowadays, particularly in 
 
 == The Streaming Platform in Action
 
-Let's see what the above e-commerce example could looks like in practice, built on a streaming platform. We're going to use the open-source Apache Kafka and KSQL projects to do this. KSQL is the streaming SQL engine for Apache Kafka, implemented on top of the Kafka Streams API which is part of Apache Kafka itself.
+Let's see what the above e-commerce example looks like in practice when implemented using a more modern design pattern, based on a streaming platform. We're going to use the open-source Apache Kafka and KSQL projects to do this. KSQL is the streaming SQL engine for Apache Kafka, implemented on top of the Kafka Streams API which is part of Apache Kafka itself.
 
 In our example, the _events_ are the reviews that the users submit on the site, and these are streamed directly into Kafka. From here, they can be joined to the user information _in real time_ and the resulting enriched data written back to Kafka. With this transformation done, the data can be used to drive the above applications and targets. The transformation logic is only required once. The data is extracted from the source system once. The transformed data can be used multiple times, by independent applications. New sources and targets can be added, without any change to the existing components. All of this is very low-latency.
 
@@ -72,22 +72,22 @@ image::images/design.png[]
 
 The benefits of this include:
 
-- Data enrichment is done once, and available for any consuming application(s)
+- Data enrichment is done once, and available for any consuming application
 - Processing is low latency
 - Notifications to customer ops team happen as soon as the VIP customer leaves a poor review - much better customer experience, more chance of retaining their business
 - Easy to scale by adding new nodes as required for greater throughput
 
 == Transform Once, Use Many
 
-Often the data used by one system will also be required by another, and the same goes for data that has been through enrichment or transformation. The work that we do to cleanse the inbound stream of customer details, standardize the country name, state/county identifiers, phone number formatting--all of this is going to be useful to both the analytics platform downstream, but also any other application that deals with customer data.
+Often the data used by one system will also be required by another, and the same goes for data that has been through enrichment or transformation. The work that we do to cleanse the inbound stream of customer details, standardize the country name, state/county identifiers, phone number formatting—all of this is going to be useful to both the analytics platform downstream, but also any other application that deals with customer data.
 
-A great pattern to adopt is to stream data as it is transformed _back into Kafka_. This makes that data available, in real time, to all applications directly. The alternative is the legacy pattern of writing transformed data down to a target (often a data lake), and having other applications pull the data from there—with the associated latency and unnecessary coupling from an architectural point of view.
+A great pattern to adopt is to stream data as it is transformed _back into Kafka_. This makes that data available, in real time, to all applications directly. The alternative is the legacy pattern of writing transformed data down to a target (often a data lake), and having other applications pull the data from there—with the associated latency and complication to our systems architecture. 
 
 By streaming the transformed data back into Kafka, we get some great benefits: -
 
 1. Importantly, there is separation of responsibilities between the transformation, and the application/system consuming that data. The latency remains low, as the transformed data that is streamed to Kafka can be streamed straight to the desired target. Even for a transformation in which you think only your application will want the transformed data, this pattern is a useful one.
 
-2. The transformed data can now also be used to drive other applications. Because Kafka persists data, the same data can be used by multiple consumers--and completely independently. Unlike traditional message queues, data is not removed from Kafka once it has been consumed. 
+2. The transformed data can now also be used to drive other applications. Because Kafka persists data, the same data can be used by multiple consumers—and completely independently. Unlike traditional message queues, data is not removed from Kafka once it has been consumed. 
 
 3. There is a single instance of the transformation code with any associated business logic that it implements. That means a single place in which to maintain it, a standard definition for any measures derived, and consistency in the data across systems. Contrast this to multiple systems each performing the same transformation logic. For the best will in the world, the code _will_ diverge, and you _will_ end up hunting for that needle-in-a-haystack of why your data between systems doesn't reconcile.
 
@@ -99,10 +99,9 @@ By adopting a streaming platform we decouple the sources and targets for data, a
 
 image::images/streaming_platform.png[]
 
-
 == Implementing the design
 
-Now let us look in detail at the detail of building this. 
+Now let us look in detail at the detail of building this. You can find the code for all of the examples, along with a docker-compose files, https://github.com/confluentinc/infoq-kafka-ksql[on github].
 
 === Getting data into Kafka
 
