@@ -2,15 +2,15 @@
 Robin Moffatt <robin@confluent.io>
 v0.30 24 Jul 2018
 
-The way in which we handle data, and build applications to do so, is changing. Technology and development practices have evolved to a point where building systems in isolated silos is somewhat impractical, if not anachronistic. As the cliché of a cliché goes, data is the new oil, the life-blood of an organization—however you want to analogize it, the successful handling and exploitation of data in a company is critical to its success.
+The way in which we handle data, and build applications, is changing. Technology and development practices have evolved to a point where building systems in isolated silos is somewhat impractical, if not anachronistic. As the cliché of a cliché goes, data is the new oil, the life-blood of an organization—however you want to analogize it, the successful handling and exploitation of data in a company is critical to its success.
 
-In this article we're going to see a practical example of a powerful design pattern based around event-driven architectures and a streaming platform. We'll discuss why companies are moving to adopt this, instead of legacy approaches to integrating systems—as well as driving real time requirements. 
+In this article we're going to see a practical example of a powerful design pattern based aroud event-driven architectures and a streaming platform. We'll discuss why companies are moving to adopt this, instead of legacy approaches to integrating systems—as well as driving real-time requirements. 
 
 Part of this shift away that is happening is the blurring of lines between "analytics" systems and "transactional" systems. In the old days, we built our transactional systems on which our business ran, and then a separate team would be responsible for extracting that data and building analytics (or BI, or MIS, or DSS, depending on your age) on that. It was done in an isolated manner, and was typically a one-way feed. Analytics teams took the data, on which processing was done to cleanse and enrich it, and then reports were built.
 
 Now, we have the beginnings of an acceptance that data is not only _generated_ by systems, but combined with other data and insights can actually be used to _power_ those systems and others—and we have the technology that enables us to do so, in real time, and at scale. It's about enabling the integration of data across departments, teams, and even companies, making it available to any application that wants to do so, and building this in such a way that is flexible, scalable, and maintainable in the long term.
 
-As an example of this, retail banks are faced with the challenge of providing compelling customer experience to a new generation of users, whose expectations are shaped by AI-powered mobile applications from Google and Apple. In order to meet this challenge, they'll need to combine everything they know about their customers with state of the art predictive models, and provide the results to mobile apps, web apps and physical branches. ING and RBC used event-driven architectures to power modern systems that do exactly that. Let's dive into how they transformed the user-experience and the development process at the same time.
+As an example of this, retail banks are faced with the challenge of providing compelling customer experience to a new generation of users, whose expectations are shaped by AI-powered mobile applications from Google and Apple. In order to meet this challenge, they'll need to combine everything they know about their customers with state of the art predictive models, and provide the results to mobile apps, web apps and physical branches. ING and RBC used event-driven architectures to power modern systems that do exactly that. Let's dive into the technologies and design patterns that enabled them to transform the user-experience and the development process at the same time.
 
 == ETL, but not as you know it
 
@@ -435,20 +435,3 @@ With KSQL it is possible to write streaming processing applications using a lang
 
 To learn more about KSQL you can https://www.youtube.com/playlist?list=PLa7VYi0yPIH2eX8q3mPpZAn3qCS1eDX8W[watch the tutorials] and https://docs.confluent.io/current/ksql/docs/tutorials/index.html[try them out for yourself]. Sizing and deployment practices are documented, and there is an active community around it on the Confluent Community Slack group. The examples shown in this article are available https://github.com/confluentinc/infoq-kafka-ksql[on github].
 
-
-
----
-
-== All data is a stream of events (needs a home / cut ?)
-
-Whether we're building fraud-detection systems, analytical platforms, or meal delivery services, they all work with data, they all need to process that data in some way—and they all generate more data as an output. The developers on these systems may not recognize this as the "ETL" of their data-engineering brethren, but in practice they are closely related.
-
-The core of this argument is events.
-
-ETL has always been a batch-driven process, primarily through technology constraints but also, to an extent, habit. This has dictated the mindset in developers that ETL is not applicable to those outside of the analytics space. After all, if we are building a transactional application with a user somewhere waiting for a response, this is mutually exclusive to batch. But as we've illustrated above there are a lot of parallels in how we are working with data. The unifying factor is that fundamentally _all data is a stream of events_.
-
-The key shift here is that instead of pulling data from a system at the point at which we want to process it, we make available data from a source system _as soon as the event occurs_. That may be a website click, and application internal event, a sensor reading—and even a change in a database table. Once emitted, the event can be processed (transformed), and consumed as required at a latency of our choosing. This may be in real time, or it may be in batch fashion. The point is, the data is made available straight away, and thus low-latency is a deliberate design decision built in. Batch, on the other hand, builds in latency as an unavoidable characteristic—by definition.
-
-By modeling data as a real-time stream of events, and understanding that data generally requires processing (transformation), we arrive at a point where we want to build applications (whether transactional or analytical), and a common platform on which to do this makes sense. A platform into which all events are sent _as they occur_, on which we can persist data for re-use and re-consumption, and in which we can process the data as it flows. The data in question is both "fact" data (business events), as well as "reference" data (dimensions)—all of this is fundamentally events that we stream into, persist, and process in the same platform.
-
-Thus, Apache Kafka as a streaming platform intersects equally the seemingly-disparate worlds of application developers and "big data". Applications requiring real-time feeds of data, event-driven applications, and batch-driven systems, can all be built on Kafka. Kafka provides the integration that we expect for an ETL platform, and it provides the real-time capabilities that an event-driven application demands. By using Kafka for both, we end up with a whole greater than the sum of its parts. Applications can all take advantage of each others data, analytics can be driven in real-time, and insights from these analytics can be fed back into the source applications. A virtuous feedback loop is created.
