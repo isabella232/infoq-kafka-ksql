@@ -50,7 +50,9 @@ There are two key concepts here:
 * Data is created by an application, and we want it to be available to other applications.
 * We often want to process the data in some way before it can be used. This could be to cleanse it, to apply business logic to it, and so on
 
-Thinking about many applications that are being built nowadays, particularly in the microservices and event-driven space, what they do is take data from one or more systems, manipulate the data, and then pass it on to another application or system. For example—a fraud detection service will take data from merchant transactions, apply a fraud detection model, and write the results to a store such as Elastic for review by an expert. Can you spot the similarity to the above outline? Is this a microservice or ETL process? Or is actually what we used to call ETL a pattern that is a lot more broadly applicable nowadays?
+Thinking about many applications that are being built nowadays, particularly in the microservices and event-driven space, what they do is take data from one or more systems, manipulate the data, and then pass it on to another application or system. For example—a fraud detection service will take data from merchant transactions, apply a fraud detection model, and write the results to a store such as Elastic for review by an expert. Can you spot the similarity to the above outline? Is this a microservice or ETL process? 
+
+ETL is actually a design pattern, applicable to a huge variety of purposes beyond traditional data warehousing from which it originated.
 
 == The Streaming Platform in Action
 
@@ -79,17 +81,17 @@ The benefits of this include:
 
 == Transform Once, Use Many
 
-Often the data used by one system will also be required by another, and the same goes for data that has been through enrichment or transformation. The work that we do to cleanse the inbound stream of customer details, standardize the country name, state/county identifiers, phone number formatting—all of this is going to be useful to both the analytics platform downstream, but also any other application that deals with customer data.
+Often the data used by one system will also be required by another, and the same goes for data that has been through enrichment or transformation. The work that we do to cleanse the inbound stream of customer details, standardize the country name, state/county identifiers, phone number formatting—all of this is going to be useful to both the analytics platform downstream, but also any other application that deals with customer data. We can formalize this into a three-tier data model, applicable to many data processing architectures. Tier 1 is the raw data. Tier 2 is the "integration layer"—data is clean and standardized, available for anyone to analyze. Tier 3 is the "application layer", data is joined, aggregated and formatted in a way that makes it most useful for the needs of a specific application.
 
-A great pattern to adopt is to stream data as it is transformed _back into Kafka_. This makes that data available, in real time, to all applications directly. The alternative is the legacy pattern of writing transformed data down to a target (often a data lake), and having other applications pull the data from there—with the associated latency and complication to our systems architecture. 
+A great pattern to adopt is to stream raw data ("tier 1") as it is transformed ("tier 2") _back into Kafka_. This makes that data available, in real time, to all applications directly. The alternative is the legacy pattern of writing transformed data down to a target (often a data lake), and having other applications pull the data from there—with the associated latency and complication to our systems architecture. Where applications come to consume and transform the data for their own purpose ("tier 3"), this may also be done in Kafka—or depending on technical requirements, using other technologies such as RDBMS/NoSQL/Object Store, as required.
 
 By streaming the transformed data back into Kafka, we get some great benefits: -
 
-1. Importantly, there is separation of responsibilities between the transformation, and the application/system consuming that data. The latency remains low, as the transformed data that is streamed to Kafka can be streamed straight to the desired target. Even for a transformation in which you think only your application will want the transformed data, this pattern is a useful one.
+1. **Separation of responsibilities**: between the transformation, and the application/system consuming that data. The latency remains low, as the transformed data that is streamed to Kafka can be streamed straight to the desired target. Even for a transformation in which you think only your application will want the transformed data, this pattern is a useful one.
 
-2. The transformed data can now also be used to drive other applications. Because Kafka persists data, the same data can be used by multiple consumers—and completely independently. Unlike traditional message queues, data is not removed from Kafka once it has been consumed. 
+2. **Transformed data can be used to drive other applications**: Because Kafka persists data, the same data can be used by multiple consumers—and completely independently. Unlike traditional message queues, data is not removed from Kafka once it has been consumed. 
 
-3. There is a single instance of the transformation code with any associated business logic that it implements. That means a single place in which to maintain it, a standard definition for any measures derived, and consistency in the data across systems. Contrast this to multiple systems each performing the same transformation logic. For the best will in the world, the code _will_ diverge, and you _will_ end up hunting for that needle-in-a-haystack of why your data between systems doesn't reconcile.
+3. **Single instance of the transformation code**: This instance includes any associated business logic that it implements. That means a single place in which to maintain it, a standard definition for any measures derived, and consistency in the data across systems. Contrast this to multiple systems each performing the same transformation logic. For the best will in the world, the code _will_ diverge, and you _will_ end up hunting for that needle-in-a-haystack of why your data between systems doesn't reconcile.
 
 The goal is to avoid creating 1:1 pipelines, and instead create a hub with the platform at the centre. Traditionally ETL would be done on a point-to-point basis, taking data from a source system, and loading it to a target one. If the data was needed elsewhere it would either be extracted twice, or taken from the original target. Both of these are undesirable. The former increases the load on the source system, and the latter introduced an unnecessary dependency and coupling in the design. In short, this is how the "big ball of mud" or "spaghetti" architectures start. 
 
@@ -110,6 +112,8 @@ Web applications have several options for streaming events into Kafka.
 * The Producer API is available through numerous client libraries, for languages including Java, .NET, Python, C/C++, Go, node.js, and more.
 
 * There is an open-source REST proxy, through which HTTP calls can be made to send data to Kafka.
+
+In our example the application is using the Producer API.
 
 The messages sent from the web application into the Kafka topic `ratings` look like this:
 
@@ -340,7 +344,12 @@ finally:
 
 image:images/slack_ratings.png[Slack notifications]
 
-It's worth restating here that the application we're building (call it a microservice if you like) is _event driven_. That is, the application waits for an event and then acts. It is not trying to process all data and look for a given condition. We've separated out the responsibilities. The filtering of a real-time stream of events for a determined condition is done by KSQL (using the `CREATE STREAM UNHAPPY_PLATINUM_CUSTOMERS` statement that we saw above), and matching events are written to a Kafka topic, which is used to drive our application. This application then just has a sole responsibility and purpose for taking an event and generating a push notification from it. The benefits here are clear:
+It's worth restating here that the application we're building (call it a microservice if you like) is _event driven_. That is, the application waits for an event and then acts. It is not trying to process all data and look for a given condition, and nor is it a synchronous request-response service responding to a command. We've separated out the responsibilities: 
+
+- *The filtering of a real-time stream of events for a determined condition* is done by KSQL (using the `CREATE STREAM UNHAPPY_PLATINUM_CUSTOMERS` statement that we saw above), and matching events are written to a Kafka topic
+- *The notification service* has a sole responsibility and purpose for taking an event from the Kafka topic, and generating a push notification from it. It does this asynchronously. 
+
+The benefits here are clear:
 
 - We could scale out the application to handle greater number of notifications, without needing to modify the filtering logic
 - We could replace the application with an alternative one, without needing to modify the filtering logic
