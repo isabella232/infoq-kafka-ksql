@@ -211,11 +211,11 @@ In GCS you should see data:
 
 [source,bash]
 ----
-$ aws s3 ls rmoff-demo-ratings/topics/ratings-with-customer-data/partition=0/
-2018-07-20 13:26:29        569 ratings-with-customer-data+0+0000000000.json
-2018-07-20 13:26:31        615 ratings-with-customer-data+0+0000000003.json
-2018-07-20 13:26:32        587 ratings-with-customer-data+0+0000000006.json
-2018-07-20 13:26:33        592 ratings-with-customer-data+0+0000000009.json
+$ $ gsutil ls gs://rmoff-demo-ratings/topics/ratings-with-customer-data/partition=0/
+gs://rmoff-demo-ratings/topics/ratings-with-customer-data/partition=0/ratings-with-customer-data+0+0000000000.json
+gs://rmoff-demo-ratings/topics/ratings-with-customer-data/partition=0/ratings-with-customer-data+0+0000000064.json
+gs://rmoff-demo-ratings/topics/ratings-with-customer-data/partition=0/ratings-with-customer-data+0+0000000128.json
+gs://rmoff-demo-ratings/topics/ratings-with-customer-data/partition=0/ratings-with-customer-data+0+0000000192.json
 ----
 
 image::images/gcs_bucket_ratings.png[]
