@@ -1,6 +1,6 @@
 = Democratizing Stream Processing with Apache Kafka and KSQL, Part 2
 Robin Moffatt <robin@confluent.io>
-v0.30 24 Jul 2018
+v1.00 30 Jul 2018
 
 The way in which we handle data, and build applications, is changing. Technology and development practices have evolved to a point where building systems in isolated silos is somewhat impractical, if not anachronistic. As the cliché of a cliché goes, data is the new oil, the life-blood of an organization—however you want to analogize it, the successful handling and exploitation of data in a company is critical to its success.
 
@@ -52,7 +52,7 @@ There are two key concepts here:
 
 Thinking about many applications that are being built nowadays, particularly in the microservices and event-driven space, what they do is take data from one or more systems, manipulate the data, and then pass it on to another application or system. For example—a fraud detection service will take data from merchant transactions, apply a fraud detection model, and write the results to a store such as Elastic for review by an expert. Can you spot the similarity to the above outline? Is this a microservice or ETL process? 
 
-ETL is actually a design pattern, applicable to a huge variety of purposes beyond traditional data warehousing from which it originated.
+ETL is a design pattern, applicable to a huge variety of purposes beyond traditional data warehousing from which it originated.
 
 == The Streaming Platform in Action
 
@@ -81,7 +81,7 @@ The benefits of this include:
 
 == Transform Once, Use Many
 
-Often the data used by one system will also be required by another, and the same goes for data that has been through enrichment or transformation. The work that we do to cleanse the inbound stream of customer details, standardize the country name, state/county identifiers, phone number formatting—all of this is going to be useful to both the analytics platform downstream, but also any other application that deals with customer data. We can formalize this into a three-tier data model, applicable to many data processing architectures. Tier 1 is the raw data. Tier 2 is the "integration layer"—data is clean and standardized, available for anyone to analyze. Tier 3 is the "application layer", data is joined, aggregated and formatted in a way that makes it most useful for the needs of a specific application.
+Often the data used by one system will also be required by another, and the same goes for data that has been through enrichment or transformation. The work that we do to cleanse the inbound stream of customer details, standardize the country name, state/county identifiers, phone number formatting—all of this is going to be useful to both the analytics platform downstream, but also any other application that deals with customer data. We can formalize this into a three-tier data model, applicable to many data processing architectures. Tier 1 is the raw data. Tier 2 is the "integration layer"—data is clean and standardized, available for anyone to analyze. Tier 3 is the "application layer", in which data is joined, aggregated and formatted in a way that makes it most useful for the needs of a specific application.
 
 A great pattern to adopt is to stream raw data ("tier 1") as it is transformed ("tier 2") _back into Kafka_. This makes that data available, in real time, to all applications directly. The alternative is the legacy pattern of writing transformed data down to a target (often a data lake), and having other applications pull the data from there—with the associated latency and complication to our systems architecture. Where applications come to consume and transform the data for their own purpose ("tier 3"), this may also be done in Kafka—or depending on technical requirements, using other technologies such as RDBMS/NoSQL/Object Store, as required.
 
