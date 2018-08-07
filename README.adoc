@@ -1,6 +1,6 @@
 = InfoQ - Apache Kafka and KQL article - code samples
 Robin Moffatt <robin@confluent.io>
-v0.10, 20 Jul 2018
+v0.11, August 7, 2018
 
 == Overview
 
@@ -211,7 +211,7 @@ In GCS you should see data:
 
 [source,bash]
 ----
-$ $ gsutil ls gs://rmoff-demo-ratings/topics/ratings-with-customer-data/partition=0/
+$ gsutil ls gs://rmoff-demo-ratings/topics/ratings-with-customer-data/partition=0/
 gs://rmoff-demo-ratings/topics/ratings-with-customer-data/partition=0/ratings-with-customer-data+0+0000000000.json
 gs://rmoff-demo-ratings/topics/ratings-with-customer-data/partition=0/ratings-with-customer-data+0+0000000064.json
 gs://rmoff-demo-ratings/topics/ratings-with-customer-data/partition=0/ratings-with-customer-data+0+0000000128.json
