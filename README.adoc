@@ -1,10 +1,11 @@
 = InfoQ - Apache Kafka and KQL article - code samples
 Robin Moffatt <robin@confluent.io>
-v0.11, August 7, 2018
+v0.12, September 5, 2018
 
 == Overview
 
-These are the code samples and snippets that were used in writing link:infoq_ksql_part2.adoc[this InfoQ article]. 
+These are the code samples and snippets that were used in writing link:https://www.infoq.com/articles/democratizing-stream-processing-kafka-ksql-part2[this InfoQ article]. 
+You can find a related suplemental article on the link:https://www.confluent.io/blog[Confluent blog], "The Changing Face of ETL".
 
 == Startup 
 
