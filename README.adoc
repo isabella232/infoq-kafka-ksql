@@ -1,4 +1,4 @@
-= InfoQ - Apache Kafka and KQL article - code samples
+= InfoQ - Apache Kafka and KSQL article - code samples
 Robin Moffatt <robin@confluent.io>
 v0.12, September 5, 2018
 
