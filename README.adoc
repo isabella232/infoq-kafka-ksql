@@ -5,7 +5,7 @@ v0.12, September 5, 2018
 == Overview
 
 These are the code samples and snippets that were used in writing link:https://www.infoq.com/articles/democratizing-stream-processing-kafka-ksql-part2[this InfoQ article]. 
-You can find a related suplemental article on the link:https://www.confluent.io/blog[Confluent blog], "The Changing Face of ETL".
+You can find a related suplemental article on the Confluent blog, https://www.confluent.io/blog/changing-face-etl["The Changing Face of ETL"].
 
 == Startup 
 
